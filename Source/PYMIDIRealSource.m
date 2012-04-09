@@ -41,8 +41,7 @@ static void midiReadProc (const MIDIPacketList* packetList, void* createRefCon, 
     
     descriptor = [PYMIDIEndpointDescriptor descriptorWithName:newName uniqueID:newUniqueID];
     
-    [self release];
-    return [[manager realSourceWithDescriptor:descriptor] retain];
+    return [manager realSourceWithDescriptor:descriptor];
 }
 
 
@@ -75,7 +74,7 @@ static void midiReadProc (const MIDIPacketList* packetList, void* createRefCon, 
 
     MIDIInputPortCreate (
         [[PYMIDIManager sharedInstance] midiClientRef], CFSTR("PYMIDIRealSource"),
-        midiReadProc, (void*)self, &midiPortRef
+        midiReadProc, (__bridge void*)self, &midiPortRef
     );
     MIDIPortConnectSource (midiPortRef, midiEndpointRef, nil);
 }
@@ -92,28 +91,20 @@ static void midiReadProc (const MIDIPacketList* packetList, void* createRefCon, 
 
 
 - (void)processMIDIPacketList:(const MIDIPacketList*)packetList sender:(id)sender
-{
-    // I'm not sure how expensive creating an auto release pool here is.
-    // I'm hoping it's cheap, meaning it won't add much latency.  It also
-    // means that we can do memory allocation freely in the processing and
-    // it will all get automatically cleaned up once we've passed the data
-    // on, which is a win.
-    NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
-    
+{    
     NSEnumerator* enumerator = [receivers objectEnumerator];
     id receiver;
 
-    while (receiver = [[enumerator nextObject] nonretainedObjectValue])
+    while ((receiver = [[enumerator nextObject] nonretainedObjectValue]))
         [receiver processMIDIPacketList:packetList sender:self];
-        
-    [pool release];
+
 }
 
 
 static void
 midiReadProc (const MIDIPacketList* packetList, void* createRefCon, void* connectRefConn)
 {
-    PYMIDIRealSource* source = (PYMIDIRealSource*)createRefCon;
+    PYMIDIRealSource* source = (__bridge PYMIDIRealSource*)createRefCon;
     [source processMIDIPacketList:packetList sender:source];
 }
 
